@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Lunarbin.Valheim.CrossServerPortals
 {
-    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "0.1.0.0")]
+    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "0.1.1")]
     public class CrossServerPortals : BaseUnityPlugin
     {
         // Regex sourceTag|server:port|targetTag
@@ -198,7 +198,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
         // Patch FejdStartup.Start
         // This hooks in to connect to a server if the player has used
         // a cross-server portal to logout from a server.
-        [HarmonyPatch(typeof(FejdStartup), "Start")]
+        [HarmonyPatch(typeof(FejdStartup), "Awake")]
         internal class PatchFejdStartupStart
         {
             private static void Postfix()
@@ -206,7 +206,10 @@ namespace Lunarbin.Valheim.CrossServerPortals
                 if (ServerToJoin != null && TeleportingToServer && !HasJoinedServer)
                 {
                     //Player.m_localPlayer.Message(MessageHud.MessageType.Center, $"Connecting to {ServerToJoin?.Address}:{ServerToJoin?.Port}");
-                    ZSteamMatchmaking.instance.QueueServerJoin($"{ServerToJoin?.Address}:{ServerToJoin?.Port}");
+                    ServerStatus serverStatus = new ServerStatus(new ServerJoinDataDedicated($"{ServerToJoin?.Address}:{ServerToJoin?.Port}"));
+                    FejdStartup.instance.SetServerToJoin(serverStatus);
+                    FejdStartup.instance.JoinServer();
+                    //ZSteamMatchmaking.instance.QueueServerJoin($"{ServerToJoin?.Address}:{ServerToJoin?.Port}");
                 }
             }
         }

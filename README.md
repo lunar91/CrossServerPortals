@@ -27,6 +27,7 @@ There is currently no configuration.
  - Support for SinglePlayer worlds
 
 ## Changelog
+ - **0.1.1** - Updated to work with Valheim v0.217.24
  - **0.1.0.0** - Initial Release
 
 
