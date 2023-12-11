@@ -19,7 +19,7 @@ Update any portal's tag to the following format: `SourceTag|Server:Port|TargetTa
  After updating the portal's tag, the portal will change color to indicate it is a cross-server portal. Going through the portal currently *ignores* all teleportation restrictions.
 
 ## Configuration
-There is currently no configuration.
+**PreserveStatusEffects** - Defaults to true. Preserve status effects (such as wet, rested, etc.) when teleporting between servers. If the game is closed, the effects are lost. You must use a cross-server portal to preserve the status effect.
 
 ## Planned Features
  - Prompt users before switching servers.
@@ -27,6 +27,7 @@ There is currently no configuration.
  - Support for SinglePlayer worlds
 
 ## Changelog
+ - **0.2.0** - Added option (on by default) to preserve status effects across worlds.
  - **0.1.1** - Updated to work with Valheim v0.217.24
  - **0.1.0.0** - Initial Release
 

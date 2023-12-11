@@ -1,4 +1,5 @@
 ﻿using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 using Steamworks;
@@ -10,10 +11,11 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Lunarbin.Valheim.CrossServerPortals
 {
-    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "0.1.1")]
+    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "0.2.0")]
     public class CrossServerPortals : BaseUnityPlugin
     {
         // Regex sourceTag|server:port|targetTag
@@ -23,6 +25,10 @@ namespace Lunarbin.Valheim.CrossServerPortals
         public static bool TeleportingToServer = false;
         public static bool HasJoinedServer = false;
         public static float PortalExitDistance = 0.0f;
+
+        public static ConfigEntry<bool> preserveStatusEffects;
+
+        private static List<SEData> StatusEffects = new List<SEData>();
 
         public static string portalPrefab = "portal_wood";
         public static List<ZDO> knownPortals = new();
@@ -57,12 +63,59 @@ namespace Lunarbin.Valheim.CrossServerPortals
             }
 
         }
+        
+        // region preserveStatusEffects
+
+        private readonly struct SEData // Status Effect Data
+        {
+            public int Name { get; }
+            public float Ttl { get; }
+            public float Time { get; }
+
+            public SEData(int name, float ttl, float time)
+            {
+                Name = name;
+                Ttl = ttl;
+                Time = time;
+            }
+        }
+
+        // Patch Player.Load to apply saved status effects on load, AFTER load has finished.
+        [HarmonyPatch(typeof(Player), "Load")]
+        private static class PatchPlayerLoad
+        {
+            private static void Postfix(Player __instance)
+            {
+                if (preserveStatusEffects.Value && StatusEffects.Count > 0)
+                {
+                    foreach(var se in StatusEffects)
+                    {
+                        __instance.GetSEMan().AddStatusEffect(se.Name);
+                        StatusEffect theSE = __instance.GetSEMan().GetStatusEffect(se.Name);
+                        if (theSE != null)
+                        {
+                            theSE.m_ttl = se.Time;
+                        }
+                    }
+                    // Clear the saved Status Effects now that we have applied them.
+                    StatusEffects.Clear();
+                }
+            }
+        }
+        
+        // endregion preserveStatuseffects
 
         private readonly Harmony harmony = new Harmony("lunarbin.games.valheim");
 
         private void Awake()
         {
             harmony.PatchAll();
+
+            // Config for preserving status effects while switching servers.
+            preserveStatusEffects = Config.Bind("General",
+                                                "PreserveStatusEffects",
+                                                true,
+                                                "Preserve Status Effects while switching servers (such as rested, wet, etc.)");
         }
 
         // Patch TeleportWorld.Teleport.
@@ -91,6 +144,17 @@ namespace Lunarbin.Valheim.CrossServerPortals
             ServerToJoin = PortalTagToServerInfo(tag);
             if (ServerToJoin != null)
             {
+                // Preserve Status Effects across worlds
+                if (preserveStatusEffects.Value)
+                {
+                    foreach(var se in Player.m_localPlayer.GetSEMan().GetStatusEffects())
+                    {
+                        StatusEffects.Add(new SEData(se.NameHash(), se.m_ttl, 
+                             // StatusEffect.m_time is protected, so instead I just set the ttl to the remaining time.
+                                se.m_ttl > 0 ? se.GetRemaningTime() : 0));
+                    }
+                }
+
                 MovePlayerToPortalExit(ref Player.m_localPlayer, ref instance);
 
                 Game.instance.IncrementPlayerStat(PlayerStatType.PortalsUsed);
