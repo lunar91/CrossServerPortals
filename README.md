@@ -27,6 +27,7 @@ Update any portal's tag to the following format: `SourceTag|Server:Port|TargetTa
  - Support for SinglePlayer worlds
 
 ## Changelog
+ - **0.2.1** - Updated packaged DLL
  - **0.2.0** - Added option (on by default) to preserve status effects across worlds.
  - **0.1.1** - Updated to work with Valheim v0.217.24
  - **0.1.0.0** - Initial Release

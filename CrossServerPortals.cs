@@ -15,7 +15,7 @@ using UnityEngine.SceneManagement;
 
 namespace Lunarbin.Valheim.CrossServerPortals
 {
-    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "0.2.0")]
+    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "0.2.1")]
     public class CrossServerPortals : BaseUnityPlugin
     {
         // Regex sourceTag|server:port|targetTag
