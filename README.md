@@ -14,19 +14,19 @@ Update any portal's tag to the following format: `SourceTag|Server:Port|TargetTa
  - **world:WorldName**: world: followed by the name of the locally saved world.
 
  Examples:
- `homebase|127.0.0.1:2456|worldspawn`
- `bestbase|127.0.0.1:2460`
- `stonehenge|127.0.0.1`
- `worldspawn|world:HubWorld|riverbase`
+ -  `homebase|127.0.0.1:2456|worldspawn`
+ -  `bestbase|127.0.0.1:2460`
+ - `stonehenge|127.0.0.1`
+ - `worldspawn|world:HubWorld|riverbase`
 
  After updating the portal's tag, the portal will change color to indicate it is a cross-server portal. Going through the portal currently *ignores* all teleportation restrictions.
 
 ## Configuration
-**PreserveStatusEffects** - Defaults to true. Preserve status effects (such as wet, rested, etc.) when teleporting between servers. If the game is closed, the effects are lost. You must use a cross-server portal to preserve the status effect.
-**RecolorPortalGlyphs** - Toggles whether portal glyphs are recolored
-**CustomPortalGlyphColor** - The RGBA hex color code to use for portal glyphs
-**RecolorPortalEffects** - Toggles whether portal effects are recolored
-**CustomPortalEffectColor** - The RGBA hex color code to use for portal effects. 
+ - **PreserveStatusEffects** - Defaults to true. Preserve status effects (such as wet, rested, etc.) when teleporting between servers. If the game is closed, the effects are lost. You must use a cross-server portal to preserve the status effect.
+ - **RecolorPortalGlyphs** - Toggles whether portal glyphs are recolored
+ - **CustomPortalGlyphColor** - The RGBA hex color code to use for portal glyphs
+ - **RecolorPortalEffects** - Toggles whether portal effects are recolored
+ - **CustomPortalEffectColor** - The RGBA hex color code to use for portal effects. 
 
 ## Planned Features
  - Prompt users before switching servers.
