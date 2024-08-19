@@ -7,30 +7,35 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Experimental.GlobalIllumination;
 using UnityEngine.SceneManagement;
 
 namespace Lunarbin.Valheim.CrossServerPortals
 {
-    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "0.2.1")]
+    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "0.3.0")]
     public class CrossServerPortals : BaseUnityPlugin
     {
         // Regex sourceTag|server:port|targetTag
         // port and targetTag are optional
-        private static string PortalTagRegex = @"^(?<SourceTag>[A-z0-9]+)\|(?<Server>[A-z0-9\.]+):?(?<Port>[0-9]+)?\|?(?<TargetTag>[A-z0-9]+)?$";
+        private static string PortalTagRegex = @"^(?<SourceTag>[A-z0-9]+)\|(?<Server>(world:)?[A-z0-9\.]+):?(?<Port>[0-9]+)?\|?(?<TargetTag>[A-z0-9]+)?$";
         public static ServerInfo? ServerToJoin = null;
         public static bool TeleportingToServer = false;
         public static bool HasJoinedServer = false;
         public static float PortalExitDistance = 0.0f;
 
         public static ConfigEntry<bool> preserveStatusEffects;
+        public static ConfigEntry<bool> recolorPortalGlyphs;
+        public static ConfigEntry<bool> recolorPortalEffects;
+        public static ConfigEntry<Color> customPortalGlyphColor;
+        public static ConfigEntry<Color> customPortalEffectColor;
 
         private static List<SEData> StatusEffects = new List<SEData>();
 
-        public static string portalPrefab = "portal_wood";
         public static List<ZDO> knownPortals = new();
 
         public static readonly ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("CrossServerPortals");
@@ -63,7 +68,17 @@ namespace Lunarbin.Valheim.CrossServerPortals
             }
 
         }
-        
+
+
+        // Portal Colors
+        private static Color defaultColor = Color.white;
+        private static UnityEngine.ParticleSystem.MinMaxGradient defaultFlameColor1 = new UnityEngine.ParticleSystem.MinMaxGradient();
+        private static UnityEngine.ParticleSystem.MinMaxGradient defaultFlameColor2 = new UnityEngine.ParticleSystem.MinMaxGradient();
+        private static Color defaultParticleColor = Color.white;
+        private static Color defaultPortalSuckColor = Color.white;
+        private static Color defaultLightColor = Color.white;
+        private static bool defaultsSet = false;
+
         // region preserveStatusEffects
 
         private readonly struct SEData // Status Effect Data
@@ -78,6 +93,180 @@ namespace Lunarbin.Valheim.CrossServerPortals
                 Ttl = ttl;
                 Time = time;
             }
+        }
+
+        private static void SetPortalDefaults(TeleportWorld portal)
+        {
+            var target_found_red = portal.transform.Find("_target_found_red");
+            var particle_system = target_found_red.transform.Find("Particle System");
+
+            var blue_flames = particle_system.transform.Find("blue flames").GetComponent<ParticleSystem>();
+            var black_suck = particle_system.transform.Find("Black_suck").GetComponent<ParticleSystem>();
+            var suck_particles = particle_system.transform.Find("suck particles").GetComponent<ParticleSystem>();
+
+            var point_light = target_found_red.transform.Find("Point light").GetComponent<Light>();
+
+            if (defaultColor == Color.white && portal.m_colorTargetfound != customPortalGlyphColor.Value)
+            {
+                defaultColor = portal.m_colorTargetfound;
+            }
+
+           
+            defaultColor = portal.m_colorTargetfound;
+
+            defaultFlameColor1 = blue_flames.customData.GetColor(ParticleSystemCustomData.Custom1);
+            defaultFlameColor2 = blue_flames.customData.GetColor(ParticleSystemCustomData.Custom2);
+
+
+            defaultPortalSuckColor = black_suck.startColor;
+
+            defaultParticleColor = suck_particles.startColor;
+
+            defaultLightColor = point_light.color;
+
+            defaultsSet = true;
+            
+        }
+
+        /** Heirarchy of the game object:
+                 TELEPORT
+                 _target_Found_red
+                    SFX
+                    Point Light
+                    Particle System
+                        Black_suck
+                        blue flames
+                        suck particles
+                            Portal Plane
+                New
+                    small_portal
+                PlayerBase
+                Mesh collider
+                Proximity
+                GuidePoint
+
+                
+                _target_found_red/Particle System/blue flames
+                    The red flames that surround the portal.
+                _target_found_red/Particle System/Black_suck
+                    The black portal effect sucking in.
+                _target_found_red/Particle System/suck particles
+                    The square glowing particles that float around the portal, sucking in
+                 */
+        private static void SetPortalColors(TeleportWorld portal, bool defaultColors)
+        {
+            var target_found_red = portal.transform.Find("_target_found_red");
+            var particle_system = target_found_red.transform.Find("Particle System");
+
+            var blue_flames = particle_system.transform.Find("blue flames").GetComponent<ParticleSystem>();
+            var black_suck = particle_system.transform.Find("Black_suck").GetComponent<ParticleSystem>();
+            var suck_particles = particle_system.transform.Find("suck particles").GetComponent<ParticleSystem>();
+
+            var point_light = target_found_red.transform.Find("Point light").GetComponent<Light>();
+
+            if (!defaultsSet)
+            {
+                defaultColor = portal.m_colorTargetfound;                 
+
+                defaultFlameColor1 = blue_flames.customData.GetColor(ParticleSystemCustomData.Custom1);
+                defaultFlameColor2 = blue_flames.customData.GetColor(ParticleSystemCustomData.Custom2);
+
+                defaultPortalSuckColor = black_suck.startColor;
+
+                defaultParticleColor = suck_particles.startColor;
+
+                defaultLightColor = point_light.color;
+
+                defaultsSet = true;
+            }
+
+            if (recolorPortalGlyphs.Value && !defaultColors)
+            {
+                if (portal.gameObject.name == "portal_stone(Clone)")
+                {
+                    portal.m_colorTargetfound = customPortalGlyphColor.Value * 12f;
+                }
+                else
+                {
+                    portal.m_colorTargetfound = customPortalGlyphColor.Value * 4f;
+                }
+                
+            } else
+            {
+                portal.m_colorTargetfound = defaultColor;
+            }
+
+            if (recolorPortalEffects.Value && !defaultColors)
+            {   
+                blue_flames.customData.SetColor(ParticleSystemCustomData.Custom1, customPortalEffectColor.Value);
+                blue_flames.customData.SetColor(ParticleSystemCustomData.Custom2, customPortalEffectColor.Value);
+                Color customColorWithAlpha = customPortalEffectColor.Value;
+                customColorWithAlpha = customColorWithAlpha * 0.1f;
+                customColorWithAlpha.a = 0.1f;
+                black_suck.startColor = customColorWithAlpha;
+                suck_particles.startColor = customPortalEffectColor.Value;
+
+                point_light.color = customPortalEffectColor.Value;
+            } else
+            {
+                blue_flames.customData.SetColor(ParticleSystemCustomData.Custom1, defaultFlameColor1);
+                blue_flames.customData.SetColor(ParticleSystemCustomData.Custom2, defaultFlameColor2);
+                black_suck.startColor = defaultPortalSuckColor;
+                suck_particles.startColor = defaultParticleColor;
+
+                point_light.color = defaultLightColor;
+            }
+
+
+            //if (defaultColors)
+            //{
+            //    // if config says to recolor glyphs
+            //    //if (recolorPortalGlyphs.Value)
+            //    //{
+            //        if (portal.m_colorTargetfound == customPortalGlyphColor.Value)
+            //            portal.m_colorTargetfound = defaultColor;   
+            //    //}
+
+            //    // if config says to recolor effects
+            //    //if (recolorPortalEffects.Value)
+            //    //{
+            //        blue_flames.customData.SetColor(ParticleSystemCustomData.Custom1, defaultFlameColor1);
+            //        blue_flames.customData.SetColor(ParticleSystemCustomData.Custom2, defaultFlameColor2);
+            //        black_suck.startColor = defaultPortalSuckColor;
+            //        suck_particles.startColor = defaultParticleColor;
+
+            //        point_light.color = defaultLightColor;
+            //    //}
+            //} else
+            //{
+            //    // if config says to recolor glyphs
+            //    if (recolorPortalGlyphs.Value)
+            //    {
+            //        if (portal.gameObject.name == "portal_stone(Clone)")
+            //        {
+            //            portal.m_colorTargetfound = customPortalGlyphColor.Value * 12f;
+            //        }
+            //        else
+            //        {
+            //            portal.m_colorTargetfound = customPortalGlyphColor.Value * 4f;
+            //        }
+            //    }
+
+            //    // if config says to recolor effects
+            //    if (recolorPortalEffects.Value)
+            //    {
+            //        blue_flames.customData.SetColor(ParticleSystemCustomData.Custom1, customPortalEffectColor.Value);
+            //        blue_flames.customData.SetColor(ParticleSystemCustomData.Custom2, customPortalEffectColor.Value);
+            //        Color customColorWithAlpha = customPortalEffectColor.Value;
+            //        customColorWithAlpha = customColorWithAlpha * 0.1f;
+            //        customColorWithAlpha.a = 0.1f;
+            //        black_suck.startColor = customColorWithAlpha;
+            //        suck_particles.startColor = customPortalEffectColor.Value;
+
+            //        point_light.color = customPortalEffectColor.Value;
+            //    }
+            //}
+
         }
 
         // Patch Player.Load to apply saved status effects on load, AFTER load has finished.
@@ -116,6 +305,26 @@ namespace Lunarbin.Valheim.CrossServerPortals
                                                 "PreserveStatusEffects",
                                                 true,
                                                 "Preserve Status Effects while switching servers (such as rested, wet, etc.)");
+
+            recolorPortalGlyphs = Config.Bind("General", 
+                                              "RecolorPortalGlyphs", 
+                                              true, 
+                                              "Set to true to change the color of the glyphs for cross-server portals.");
+            customPortalGlyphColor = Config.Bind<Color>("General",
+                                            "CustomPortalGlyphColor",
+                                            new Color(0f, 1f, 0f, 1f),
+                                            "Custom color for portal glyphs. (defaults to Green) *Note: Stone portal glyph colors behave strangely and favor red.");
+
+            recolorPortalEffects = Config.Bind("General",
+                                               "RecolorPortalEffects", 
+                                               true, 
+                                               "Set to true to change the portal effects colors for cross-server portals.");
+
+            customPortalEffectColor = Config.Bind<Color>("General",
+                                            "CustomPortalEffectColor",
+                                            new Color(0f, 1f, 0f, 0.5f),
+                                            "Custom color for portal effects. (defaults to Green)");
+
         }
 
         // Patch TeleportWorld.Teleport.
@@ -188,21 +397,32 @@ namespace Lunarbin.Valheim.CrossServerPortals
         [HarmonyPatch(typeof(TeleportWorld), "HaveTarget")]
         internal class PatchTeleportWorldHaveTarget
         {
-            private static Color defaultColor = Color.white;
             private static bool Prefix(ref bool __result, TeleportWorld __instance)
             {
-                if (defaultColor == Color.white && __instance.m_colorTargetfound != Color.green)
-                    defaultColor = __instance.m_colorTargetfound;
-
+            
                 string text = __instance.GetText();
                 if (!PortalTagIsToServer(text))
                 {
+                    
+                    if (!defaultsSet)
+                    {
+                        SetPortalDefaults(__instance);
+                    }
 
-                    __instance.m_colorTargetfound = defaultColor;
+                    if (defaultsSet)
+                    {
+                        SetPortalColors(__instance, true);
+                    }
+                    
                     return true;
                 }
 
-                __instance.m_colorTargetfound = Color.green;
+                
+                if (defaultsSet)
+                {
+                    SetPortalColors(__instance, false);
+                }
+                
                 __result = true;
                 return false;
             }
@@ -213,21 +433,36 @@ namespace Lunarbin.Valheim.CrossServerPortals
         [HarmonyPatch(typeof(TeleportWorld), "TargetFound")]
         internal class PatchTeleportWorldTargetFound
         {
-            private static Color defaultColor = Color.white;
+            
             private static bool Prefix(ref bool __result, TeleportWorld __instance)
             {
-                if (defaultColor == Color.white && __instance.m_colorTargetfound != Color.green)
-                    defaultColor = __instance.m_colorTargetfound;
-
                 string text = __instance.GetText();
                 if (!PortalTagIsToServer(text))
                 {
 
-                    __instance.m_colorTargetfound = defaultColor;
+                    
+                    if (!defaultsSet)
+                    {
+                        SetPortalDefaults(__instance);
+                    }
+
+                    if (defaultsSet)
+                    {
+                        SetPortalColors(__instance, true);
+                    }
+                    
+
                     return true;
                 }
 
-                __instance.m_colorTargetfound = Color.green;
+                
+                if (defaultsSet)
+                {
+                    SetPortalColors(__instance, false);
+                }
+                
+
+
                 __result = true;
                 return false;
             }
@@ -262,17 +497,45 @@ namespace Lunarbin.Valheim.CrossServerPortals
         // Patch FejdStartup.Start
         // This hooks in to connect to a server if the player has used
         // a cross-server portal to logout from a server.
-        [HarmonyPatch(typeof(FejdStartup), "Awake")]
-        internal class PatchFejdStartupStart
+        [HarmonyPatch(typeof(FejdStartup), "Start")]
+        internal static class PatchFejdStartupStart
         {
             private static void Postfix()
             {
+                MessageHud.print("Test");
                 if (ServerToJoin != null && TeleportingToServer && !HasJoinedServer)
                 {
                     //Player.m_localPlayer.Message(MessageHud.MessageType.Center, $"Connecting to {ServerToJoin?.Address}:{ServerToJoin?.Port}");
-                    ServerStatus serverStatus = new ServerStatus(new ServerJoinDataDedicated($"{ServerToJoin?.Address}:{ServerToJoin?.Port}"));
-                    FejdStartup.instance.SetServerToJoin(serverStatus);
-                    FejdStartup.instance.JoinServer();
+                    var Address = ServerToJoin?.Address;
+                    if (Address.StartsWith("world:"))
+                    {
+                        var world = Address.Substring(6);
+                        if (world != "")
+                        {
+                            List<World> worlds = SaveSystem.GetWorldList();
+                            foreach (var w in worlds)
+                            {
+                                if (w.m_name == world)
+                                {
+                                    PlayerPrefs.SetString("world", world);
+
+                                    FejdStartup.instance.OnStartGame();
+                                    FejdStartup.instance.OnWorldStart();
+                                    return;
+                                }
+                            }
+                            MessageHud.print($"World does not exist {world}");
+                            //Player.m_localPlayer.Message(MessageHud.MessageType.Center, $"World does not exist {world}");
+
+                        }
+
+                    }
+                    else
+                    {
+                        ServerStatus serverStatus = new ServerStatus(new ServerJoinDataDedicated($"{ServerToJoin?.Address}:{ServerToJoin?.Port}"));
+                        FejdStartup.instance.SetServerToJoin(serverStatus);
+                        FejdStartup.instance.JoinServer();
+                    }
                     //ZSteamMatchmaking.instance.QueueServerJoin($"{ServerToJoin?.Address}:{ServerToJoin?.Port}");
                 }
             }
@@ -305,9 +568,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
             {
                 if (TeleportingToServer && ServerToJoin != null && ServerToJoin?.TargetTag != "")
                 {
-                    List<ZDO> zdos = new();
-                    int index = 0;
-                    ZDOMan.instance.GetAllZDOsWithPrefabIterative(portalPrefab, zdos, ref index);
+                    List<ZDO> zdos = ZDOMan.instance.GetPortals();
                     foreach (var portal in zdos)
                     {
                         if (portal == null) continue;
@@ -348,13 +609,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
             {
                 while (true)
                 {
-                    List<ZDO> portals = new();
-
-                    int index = 0;
-                    while (!ZDOMan.instance.GetAllZDOsWithPrefabIterative(portalPrefab, portals, ref index))
-                    {
-                        yield return null;
-                    }
+                    List<ZDO> portals = ZDOMan.instance.GetPortals();
 
                     // Send the portals to the connected client.
                     if (ZNet.instance.IsServer())
@@ -404,7 +659,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
                 return new ServerInfo(
                     match.Groups["SourceTag"].Value,
                     match.Groups["Server"].Value,
-                    ushort.Parse(match.Groups["Port"].Value ?? "0"),
+                    ushort.Parse("0" + match.Groups["Port"].Value),
                     match.Groups["TargetTag"].Value
                 );
             }
