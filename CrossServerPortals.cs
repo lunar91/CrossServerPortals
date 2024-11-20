@@ -98,6 +98,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
         private static void SetPortalDefaults(TeleportWorld portal)
         {
             var target_found_red = portal.transform.Find("_target_found_red");
+            if (!target_found_red) return;
             var particle_system = target_found_red.transform.Find("Particle System");
 
             var blue_flames = particle_system.transform.Find("blue flames").GetComponent<ParticleSystem>();
@@ -156,6 +157,8 @@ namespace Lunarbin.Valheim.CrossServerPortals
         private static void SetPortalColors(TeleportWorld portal, bool defaultColors)
         {
             var target_found_red = portal.transform.Find("_target_found_red");
+            if (!target_found_red)
+                return;
             var particle_system = target_found_red.transform.Find("Particle System");
 
             var blue_flames = particle_system.transform.Find("blue flames").GetComponent<ParticleSystem>();
