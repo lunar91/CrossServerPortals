@@ -437,7 +437,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
                         SetPortalColors(__instance, true);
                     }
                     
-                    return true;
+                    return true;    
                 }
 
                 
@@ -510,7 +510,22 @@ namespace Lunarbin.Valheim.CrossServerPortals
                     __result = true;
                     return false;
                 }
+                
                 TextInput.instance.RequestText(__instance, "$piece_portal_tag", 50);
+
+                string portalName = __instance.m_nview.GetZDO().GetString("tag");
+                if (portalName.Contains("|"))
+                {
+                    if (ZNet.instance.LocalPlayerIsAdminOrHost())
+                    {
+                        // nothing
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+           
                 __result = true;
                 return false;
             }
@@ -565,9 +580,9 @@ namespace Lunarbin.Valheim.CrossServerPortals
         }
 
 
-        // Patch FejdStartup.ShowCharacterSelection
-        // This confirms the Character Selector with the current character
-        // if the player has used a cross-server portal to logout from a server.
+                // Patch FejdStartup.ShowCharacterSelection
+                // This confirms the Character Selector with the current character
+                // if the player has used a cross-server portal to logout from a server.
         [HarmonyPatch(typeof(FejdStartup), "ShowCharacterSelection")]
         internal class PatchFejdStartupShowCharacterSelection
         {
