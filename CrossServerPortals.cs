@@ -12,12 +12,14 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine;
+using ServerSync;
+
 using UnityEngine.Experimental.GlobalIllumination;
 using UnityEngine.SceneManagement;
 
 namespace Lunarbin.Valheim.CrossServerPortals
 {
-    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "0.3.0")]
+    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "1.0.0")]
     public class CrossServerPortals : BaseUnityPlugin
     {
         // Regex sourceTag|server:port|targetTag
@@ -33,12 +35,22 @@ namespace Lunarbin.Valheim.CrossServerPortals
         public static ConfigEntry<bool> recolorPortalEffects;
         public static ConfigEntry<Color> customPortalGlyphColor;
         public static ConfigEntry<Color> customPortalEffectColor;
+        public static ConfigEntry<bool> requireAdminToRename;
 
+        // Synchronize Server Config
+        private static ServerSync.ConfigSync configSync = new ServerSync.ConfigSync("lunarbin.games.valheim")
+        {
+            DisplayName = "Cross Server Portals", 
+            CurrentVersion = "1.0.0", 
+            MinimumRequiredVersion = "1.0.0"
+        };
+        
         private static List<SEData> StatusEffects = new List<SEData>();
 
         public static List<ZDO> knownPortals = new();
 
         public static readonly ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("CrossServerPortals");
+
         public struct ServerInfo
         {
             public string Address;
@@ -78,6 +90,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
         private static Color defaultPortalSuckColor = Color.white;
         private static Color defaultLightColor = Color.white;
         private static bool defaultsSet = false;
+
 
         // region preserveStatusEffects
 
@@ -278,6 +291,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
         {
             private static void Postfix(Player __instance)
             {
+                
                 if (preserveStatusEffects.Value && StatusEffects.Count > 0)
                 {
                     foreach(var se in StatusEffects)
@@ -289,9 +303,9 @@ namespace Lunarbin.Valheim.CrossServerPortals
                             theSE.m_ttl = se.Time;
                         }
                     }
-                    // Clear the saved Status Effects now that we have applied them.
-                    StatusEffects.Clear();
                 }
+                // Clear the saved Status Effects now that we have applied them.
+                StatusEffects.Clear();
             }
         }
         
@@ -299,9 +313,12 @@ namespace Lunarbin.Valheim.CrossServerPortals
 
         private readonly Harmony harmony = new Harmony("lunarbin.games.valheim");
 
+        
+        
         private void Awake()
         {
             harmony.PatchAll();
+            
 
             // Config for preserving status effects while switching servers.
             preserveStatusEffects = Config.Bind("General",
@@ -327,7 +344,10 @@ namespace Lunarbin.Valheim.CrossServerPortals
                                             "CustomPortalEffectColor",
                                             new Color(0f, 1f, 0f, 0.5f),
                                             "Custom color for portal effects. (defaults to Green)");
-
+            
+            requireAdminToRename = Config.Bind<bool>("General", "RequireAdminToRename", false, "Require admin permissions to rename cross server portals.");
+            
+            configSync.AddLockingConfigEntry(requireAdminToRename);
         }
 
         // Patch TeleportWorld.Teleport.
@@ -357,15 +377,15 @@ namespace Lunarbin.Valheim.CrossServerPortals
             if (ServerToJoin != null)
             {
                 // Preserve Status Effects across worlds
-                if (preserveStatusEffects.Value)
-                {
+                // if (preserveStatusEffects.Value)
+                // {
                     foreach(var se in Player.m_localPlayer.GetSEMan().GetStatusEffects())
                     {
                         StatusEffects.Add(new SEData(se.NameHash(), se.m_ttl, 
                              // StatusEffect.m_time is protected, so instead I just set the ttl to the remaining time.
                                 se.m_ttl > 0 ? se.GetRemaningTime() : 0));
                     }
-                }
+                // }
 
                 MovePlayerToPortalExit(ref Player.m_localPlayer, ref instance);
 
