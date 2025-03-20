@@ -310,11 +310,25 @@ namespace Lunarbin.Valheim.CrossServerPortals
         }
         
         // endregion preserveStatuseffects
+        
+        ConfigEntry<T> config<T>(string group, string name, T value, ConfigDescription description, bool synchronizedSetting = true)
+        {
+            ConfigEntry<T> configEntry = Config.Bind(group, name, value, description);
+
+            SyncedConfigEntry<T> syncedConfigEntry = configSync.AddConfigEntry(configEntry);
+            syncedConfigEntry.SynchronizedConfig = synchronizedSetting;
+
+            return configEntry;
+        }
+
+        ConfigEntry<T> config<T>(string group, string name, T value, string description, bool synchronizedSetting = true) => config(group, name, value, new ConfigDescription(description), synchronizedSetting);
+
 
         private readonly Harmony harmony = new Harmony("lunarbin.games.valheim");
 
         
         
+          
         private void Awake()
         {
             harmony.PatchAll();
@@ -345,7 +359,11 @@ namespace Lunarbin.Valheim.CrossServerPortals
                                             new Color(0f, 1f, 0f, 0.5f),
                                             "Custom color for portal effects. (defaults to Green)");
             
-            requireAdminToRename = Config.Bind<bool>("General", "RequireAdminToRename", false, "Require admin permissions to rename cross server portals.");
+           
+            requireAdminToRename = config<bool>("General", 
+                                            "RequireAdminToRename", 
+                                            false, 
+                                            "Require admin permissions to rename cross server portals.");
             
             configSync.AddLockingConfigEntry(requireAdminToRename);
         }
@@ -510,22 +528,30 @@ namespace Lunarbin.Valheim.CrossServerPortals
                     __result = true;
                     return false;
                 }
-                
-                TextInput.instance.RequestText(__instance, "$piece_portal_tag", 50);
 
-                string portalName = __instance.m_nview.GetZDO().GetString("tag");
+                
+                
+                string portalName = __instance.GetText();
                 if (portalName.Contains("|"))
                 {
-                    if (ZNet.instance.LocalPlayerIsAdminOrHost())
+                    if (requireAdminToRename.Value)
                     {
-                        // nothing
-                    }
-                    else
-                    {
-                        return false;
+                        
+                        if (ZNet.instance.LocalPlayerIsAdminOrHost())
+                        {
+                            // nothing
+                        }
+                        else
+                        {
+                            human.Message(MessageHud.MessageType.Center, "$piece_noaccess");
+                            
+                            return false;
+                        }
                     }
                 }
-           
+                
+                TextInput.instance.RequestText(__instance, "$piece_portal_tag", 50);
+                
                 __result = true;
                 return false;
             }
