@@ -2,7 +2,6 @@
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
-using Steamworks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -596,8 +595,10 @@ namespace Lunarbin.Valheim.CrossServerPortals
                     }
                     else
                     {
-                        ServerStatus serverStatus = new ServerStatus(new ServerJoinDataDedicated($"{ServerToJoin?.Address}:{ServerToJoin?.Port}"));
-                        FejdStartup.instance.SetServerToJoin(serverStatus);
+                        //ServerJoinDataDedicated joinDataDedicated = new ServerJoinDataDedicated(ServerToJoin?.Address, (ushort)(ServerToJoin?.Port));
+                        ServerJoinData joinData = new ServerJoinData(new ServerJoinDataDedicated(ServerToJoin?.Address, (ushort)(ServerToJoin?.Port)));
+
+                        FejdStartup.instance.SetServerToJoin(joinData);
                         FejdStartup.instance.JoinServer();
                     }
                     //ZSteamMatchmaking.instance.QueueServerJoin($"{ServerToJoin?.Address}:{ServerToJoin?.Port}");
