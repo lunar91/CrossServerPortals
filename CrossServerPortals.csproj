@@ -13,7 +13,8 @@
       https://nuget.samboy.dev/v3/index.json
     </RestoreAdditionalProjectSources>
     <RootNamespace>Lunarbin.Valheim.CrossServerPortals</RootNamespace>
-    <GamePath><!-- Update Locally --></GamePath>
+    <GamePath>E:\SteamLibrary\steamapps\common\Valheim</GamePath>
+    <OutputPath>$(GamePath)\BepInEx\plugins\CrossServerPortals</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>
