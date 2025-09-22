@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <AssemblyName>ValheimCrossServerPortals</AssemblyName>
     <Description>Cross Server Portals Valheim Mod</Description>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <RestoreAdditionalProjectSources>
@@ -13,7 +13,7 @@
       https://nuget.samboy.dev/v3/index.json
     </RestoreAdditionalProjectSources>
     <RootNamespace>Lunarbin.Valheim.CrossServerPortals</RootNamespace>
-    <GamePath>E:\SteamLibrary\steamapps\common\Valheim</GamePath>
+    <GamePath><!-- Update Locally --></GamePath>
     <OutputPath>$(GamePath)\BepInEx\plugins\CrossServerPortals</OutputPath>
   </PropertyGroup>
 
