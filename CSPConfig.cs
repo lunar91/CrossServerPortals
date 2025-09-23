@@ -19,7 +19,7 @@ public static class CSPConfig
     private static ServerSync.ConfigSync configSync = new ServerSync.ConfigSync("lunarbin.games.valheim")
     {
         DisplayName = "Cross Server Portals",
-        CurrentVersion = "1.1.1",
+        CurrentVersion = BuildInfo.Version,
         MinimumRequiredVersion = "1.1.0"
     };
 

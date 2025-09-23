@@ -13,48 +13,128 @@
       https://nuget.samboy.dev/v3/index.json
     </RestoreAdditionalProjectSources>
     <RootNamespace>Lunarbin.Valheim.CrossServerPortals</RootNamespace>
-    <GamePath><!-- Update Locally --></GamePath>
     <OutputPath>$(GamePath)\BepInEx\plugins\CrossServerPortals</OutputPath>
   </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net48</TargetFramework>
+        <AssemblyName>ValheimCrossServerPortals</AssemblyName>
+        <Description>Cross Server Portals Valheim Mod</Description>
+        <Version>1.1.1</Version>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>latest</LangVersion>
+        <RestoreAdditionalProjectSources>
+            https://api.nuget.org/v3/index.json;
+            https://nuget.bepinex.dev/v3/index.json;
+            https://nuget.samboy.dev/v3/index.json
+        </RestoreAdditionalProjectSources>
+        <RootNamespace>Lunarbin.Valheim.CrossServerPortals</RootNamespace>
+        <OutDir>Release\</OutDir>
+        <Configurations>Debug;Release</Configurations>
+        <Platforms>AnyCPU</Platforms>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.40">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
-  
-  <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Reference Include="0Harmony">
-      <HintPath>$(GamePath)\BepInEx\core\0Harmony.dll</HintPath>
-    </Reference>
-    <Reference Include="assembly_steamworks">
-      <HintPath>$(GamePath)\valheim_Data\Managed\assembly_steamworks.dll</HintPath>
-    </Reference>
-    <Reference Include="assembly_valheim">
-      <HintPath>$(GamePath)\valheim_Data\Managed\assembly_valheim.dll</HintPath>
-    </Reference>
-    <Reference Include="ServerSync">
-      <HintPath>Libs\ServerSync.dll</HintPath>
-    </Reference>
-    <Reference Include="BepInEx">
-      <HintPath>$(GamePath)\BepInEx\core\BepInEx.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>$(GamePath)\valheim_Data\Managed\UnityEngine.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>$(GamePath)\valheim_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.ParticleSystemModule">
-      <HintPath>$(GamePath)\valheim_Data\Managed\UnityEngine.ParticleSystemModule.dll</HintPath>
-    </Reference>
-      <Reference Include="Splatform">
-          <HintPath>$(GamePath)\valheim_Data\Managed\Splatform.dll</HintPath>
-      </Reference>
-  </ItemGroup>
+    <PropertyGroup>
+        <!-- property name to generate and output path -->
+        <GeneratedVersionClass>GeneratedVersion.cs</GeneratedVersionClass>
+        <GeneratedNamespace>Lunarbin.Valheim.CrossServerPortals</GeneratedNamespace>
+        <!-- ensure Version is defined; fallback to 0.0.0 if not -->
+        <AssemblyVersionText>$(Version)</AssemblyVersionText>
+    </PropertyGroup>
+
+    <Target Name="GenerateVersionSource" BeforeTargets="BeforeCompile">
+        <PropertyGroup>
+            <GeneratedPath>$(IntermediateOutputPath)$(GeneratedVersionClass)</GeneratedPath>
+            <VersionText Condition="'$(AssemblyVersionText)' == ''">0.0.0</VersionText>
+            <VersionText Condition="'$(AssemblyVersionText)' != ''">$(AssemblyVersionText)</VersionText>
+        </PropertyGroup>
+
+        <MakeDir Directories="$(IntermediateOutputPath)" Condition="!Exists('$(IntermediateOutputPath)')"/>
+
+        <WriteLinesToFile
+                File="$(GeneratedPath)"
+                Lines="namespace $(GeneratedNamespace) { internal static class BuildInfo { public const string Version = &quot;$(VersionText)&quot;%3B } }"
+                Overwrite="true"
+        />
+
+        <ItemGroup>
+            <Compile Include="$(GeneratedPath)"/>
+        </ItemGroup>
+    </Target>
+
+    <Target Name="CopyReleaseToGame" AfterTargets="Build" Condition="Exists('$(OutputPath)$(AssemblyName).dll')">
+        <!-- destination (uses GamePath property from your project) -->
+        <PropertyGroup>
+            <DestDir>$(GamePath)\BepInEx\plugins\CrossServerPortals\</DestDir>
+        </PropertyGroup>
+
+        <!-- create destination directory -->
+        <MakeDir Directories="$(DestDir)" Condition="!Exists('$(DestDir)')"/>
+
+        <!-- copy compiled DLL and PDB (if present) -->
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+              DestinationFiles="$(DestDir)$(AssemblyName).dll"/>
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).pdb"
+              DestinationFiles="$(DestDir)$(AssemblyName).pdb"
+              Condition="Exists('$(OutputPath)$(AssemblyName).pdb')"/>
+    </Target>
+
+    <Target Name="PackageForRelease" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' and Exists('$(OutputPath)$(AssemblyName).dll')">
+        <PropertyGroup>
+            <DestDir>Packaged\$(AssemblyName)-$(Version)</DestDir>
+        </PropertyGroup>
+
+        <MakeDir Directories="$(DestDir)" Condition="!Exists('$(DestDir)')"/>
+
+        <Copy SourceFiles="Release\$(AssemblyName).dll"
+              DestinationFiles="$(DestDir)\$(AssemblyName).dll"/>
+        <Copy SourceFiles="manifest.json"
+              DestinationFiles="$(DestDir)\manifest.json"/>
+        <Copy SourceFiles="README.md"
+              DestinationFiles="$(DestDir)\README.md"/>
+        <Copy SourceFiles="icon.png"
+              DestinationFiles="$(DestDir)\icon.png"/>
+        <ZipDirectory SourceDirectory="$(DestDir)" DestinationFile="Packaged\$(AssemblyName)-v$(Version).zip"/>
+    </Target>
+
+
+    <ItemGroup>
+        <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.40">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
+        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="0Harmony">
+            <HintPath>$(GamePath)\BepInEx\core\0Harmony.dll</HintPath>
+        </Reference>
+        <Reference Include="assembly_steamworks">
+            <HintPath>$(GamePath)\valheim_Data\Managed\assembly_steamworks.dll</HintPath>
+        </Reference>
+        <Reference Include="assembly_valheim">
+            <HintPath>$(GamePath)\valheim_Data\Managed\assembly_valheim.dll</HintPath>
+        </Reference>
+        <Reference Include="ServerSync">
+            <HintPath>Libs\ServerSync.dll</HintPath>
+        </Reference>
+        <Reference Include="BepInEx">
+            <HintPath>$(GamePath)\BepInEx\core\BepInEx.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine">
+            <HintPath>$(GamePath)\valheim_Data\Managed\UnityEngine.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.CoreModule">
+            <HintPath>$(GamePath)\valheim_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.ParticleSystemModule">
+            <HintPath>$(GamePath)\valheim_Data\Managed\UnityEngine.ParticleSystemModule.dll</HintPath>
+        </Reference>
+        <Reference Include="Splatform">
+            <HintPath>$(GamePath)\valheim_Data\Managed\Splatform.dll</HintPath>
+        </Reference>
+    </ItemGroup>
 </Project>
