@@ -14,7 +14,7 @@ using Splatform;
 
 namespace Lunarbin.Valheim.CrossServerPortals
 {
-    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "1.1.0")]
+    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "1.1.1")]
     public class CrossServerPortals : BaseUnityPlugin
     {
         // Regex sourceTag|server:port|targetTag

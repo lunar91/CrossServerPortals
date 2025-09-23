@@ -44,6 +44,8 @@ or
 - [ServerSync](https://github.com/blaxxun-boop/ServerSync) - Library used to provide Server-Authoritative settings.
 
 ## Changelog
+ - **1.1.1** - Fixed a version mishap.
+ - **1.1.0** - Fixed Admin Permission Synchronization. Fixed visual bug introduced in Valheim v0.221.4.
  - **1.0.0** - Added RequireAdminToRename config (thank you, [Wacky-Mole](https://github.com/Wacky-Mole)) Integrated ServerSync to synchronize this config with server.
  - **0.3.0** - Improved support for Ashlands. Added configurable colors. Added support for single player worlds.
  - **0.2.1** - Updated packaged DLL
