@@ -10,10 +10,11 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using ServerSync;
 using UnityEngine.SceneManagement;
+using Splatform;
 
 namespace Lunarbin.Valheim.CrossServerPortals
 {
-    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "1.0.2")]
+    [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", "1.1.0")]
     public class CrossServerPortals : BaseUnityPlugin
     {
         // Regex sourceTag|server:port|targetTag
@@ -25,21 +26,6 @@ namespace Lunarbin.Valheim.CrossServerPortals
         public static bool TeleportingToServer = false;
         public static bool HasJoinedServer = false;
         public static float PortalExitDistance = 0.0f;
-
-        public static ConfigEntry<bool> preserveStatusEffects;
-        public static ConfigEntry<bool> recolorPortalGlyphs;
-        public static ConfigEntry<bool> recolorPortalEffects;
-        public static ConfigEntry<Color> customPortalGlyphColor;
-        public static ConfigEntry<Color> customPortalEffectColor;
-        public static ConfigEntry<bool> requireAdminToRename;
-
-        // Synchronize Server Config
-        private static ServerSync.ConfigSync configSync = new ServerSync.ConfigSync("lunarbin.games.valheim")
-        {
-            DisplayName = "Cross Server Portals",
-            CurrentVersion = "1.0.2",
-            MinimumRequiredVersion = "1.0.0"
-        };
 
         private static List<SEData> StatusEffects = new List<SEData>();
 
@@ -92,266 +78,13 @@ namespace Lunarbin.Valheim.CrossServerPortals
             }
         }
 
-        enum PortalType
-        {
-            Stone,
-            Wood,
-            Other
-        }
-
-        private static TeleportWorld _portal_stone;
-        private static TeleportWorld _portal_wood;
-        private static TeleportWorld _portal;
-
-        private static TeleportWorld[] _modified;
-
-        private static bool IsModified(TeleportWorld portal)
-        {
-            if (portal == null || _modified == null || _modified.Length == 0) return false;
-            for (int i = 0; i < _modified.Length; i++)
-                if (ReferenceEquals(_modified[i], portal) || _modified[i] == portal)
-                    return true;
-            return false;
-        }
-
-        private static void Modify(TeleportWorld portal)
-        {
-            if (portal == null) return;
-            if (IsModified(portal)) return;
-
-            if (_modified == null || _modified.Length == 0)
-            {
-                _modified = new[] { portal };
-                return;
-            }
-
-            var old = _modified;
-            var len = old.Length;
-            var next = new TeleportWorld[len + 1];
-            for (int i = 0; i < len; i++) next[i] = old[i];
-            next[len] = portal;
-            _modified = next;
-        }
-
-        private static void Unmodify(TeleportWorld portal)
-        {
-            if (portal == null || _modified == null || _modified.Length == 0) return;
-
-            int index = -1;
-            for (int i = 0; i < _modified.Length; i++)
-            {
-                if (ReferenceEquals(_modified[i], portal) || _modified[i] == portal)
-                {
-                    index = i;
-                    break;
-                }
-            }
-
-            if (index == -1) return; // not found
-
-            int newLen = _modified.Length - 1;
-            if (newLen == 0)
-            {
-                _modified = null;
-                return;
-            }
-
-            var next = new TeleportWorld[newLen];
-            for (int i = 0, j = 0; i < _modified.Length; i++)
-            {
-                if (i == index) continue;
-                next[j++] = _modified[i];
-            }
-
-            _modified = next;
-        }
-
-        // Finds any UnityEngine.Object by name, including disabled/prefabs/assets (editor + runtime for loaded assets)
-        public static T FindAnyObjectByName<T>(string name) where T : Object
-        {
-            foreach (var obj in Resources.FindObjectsOfTypeAll<T>())
-                if (obj != null && obj.name == name)
-                    return obj;
-            return null;
-        }
-
-        private static PortalType GetPortalType(TeleportWorld portal)
-        {
-            // If this is a portal_stone, return portaltype.stone
-            if (portal.gameObject.name.Contains("portal_stone"))
-            {
-                return PortalType.Stone;
-            }
-
-            // If this is a portal_wood, return portaltype.wood
-            if (portal.gameObject.name.Contains("portal_wood"))
-            {
-                return PortalType.Wood;
-            }
-
-            // Unknown Portal Type
-            return PortalType.Other;
-        }
-
-        private static TeleportWorld GetDefaultPortal(TeleportWorld portal)
-        {
-            switch (GetPortalType(portal))
-            {
-                case PortalType.Stone:
-                    if (!_portal_stone)
-                    {
-                        _portal_stone = FindAnyObjectByName<TeleportWorld>("portal_stone");
-                    }
-
-                    return _portal_stone;
-                case PortalType.Wood:
-                    if (!_portal_wood)
-                    {
-                        _portal_wood = FindAnyObjectByName<TeleportWorld>("portal_wood");
-                    }
-
-                    return _portal_wood;
-                default:
-                    if (!_portal)
-                    {
-                        _portal = FindAnyObjectByName<TeleportWorld>("portal");
-                    }
-
-                    return _portal;
-            }
-        }
-
-        // Reset a portal's colors to the default portal colors.
-        private static void ResetPortalColors(TeleportWorld portal)
-        {
-            if (!IsModified(portal))
-            {
-                return;
-            }
-
-            Unmodify(portal);
-            var type = GetPortalType(portal);
-            var defaultPortal = GetDefaultPortal(portal);
-            if (!defaultPortal)
-            {
-                Debug.Log($"Could not find defualt portal for {portal.name}");
-                return;
-            }
-
-            switch (type)
-            {
-                case PortalType.Stone:
-                case PortalType.Wood:
-
-                    var target_found_red = portal.transform.Find("_target_found_red");
-                    var def_target_found_red = defaultPortal.transform.Find("_target_found_red");
-                    
-                    // Reset the glyph color
-                    portal.m_colorTargetfound = defaultPortal.m_colorTargetfound;
-
-                    // The primary particle system color
-                    var particleSystem = target_found_red.transform.Find("Particle System");
-                    var defParticleSystem = def_target_found_red.transform.Find("Particle System");
-
-                    // The Flames particle system color.
-                    var blueFlames = particleSystem.transform.Find("blue flames").GetComponent<ParticleSystem>();
-                    var defBlueFlames = defParticleSystem.transform.Find("blue flames").GetComponent<ParticleSystem>();
-                    blueFlames.startColor = defBlueFlames.startColor;
-                    blueFlames.customData.SetColor(ParticleSystemCustomData.Custom1, defBlueFlames.customData.GetColor(ParticleSystemCustomData.Custom1));
-                    blueFlames.customData.SetColor(ParticleSystemCustomData.Custom2, defBlueFlames.customData.GetColor(ParticleSystemCustomData.Custom2));
-                    
-
-                    // The black portal sucking particle system
-                    var blackSuck = particleSystem.transform.Find("Black_suck").GetComponent<ParticleSystem>();
-                    var defBlackSuck = defParticleSystem.transform.Find("Black_suck").GetComponent<ParticleSystem>();
-                    blackSuck.startColor = defBlackSuck.startColor;
-                    
-                    // The Sucking Particles
-                    var suckParticles = particleSystem.transform.Find("suck particles").GetComponent<ParticleSystem>();
-                    var defSuckParticles = defParticleSystem.transform.Find("suck particles").GetComponent<ParticleSystem>();
-                    suckParticles.startColor = defSuckParticles.startColor;
-
-                    // The light color
-                    var pointLight = target_found_red.transform.Find("Point light").GetComponent<Light>();
-                    var defPointLight = def_target_found_red.transform.Find("Point light").GetComponent<Light>();
-                    pointLight.color = defPointLight.color;
-                    return;
-                default:
-                    // Nothing to do for other portals...
-                    return;
-            }
-        }
-
-        /** Heirarchy of the game object:
-                 TELEPORT
-                 _target_Found_red
-                    SFX
-                    Point Light
-                    Particle System
-                        Black_suck
-                        blue flames
-                        suck particles
-                            Portal Plane
-                New
-                    small_portal
-                PlayerBase
-                Mesh collider
-                Proximity
-                GuidePoint
-
-
-                _target_found_red/Particle System/blue flames
-                    The red flames that surround the portal.
-                _target_found_red/Particle System/Black_suck
-                    The black portal effect sucking in.
-                _target_found_red/Particle System/suck particles
-                    The square glowing particles that float around the portal, sucking in
-                 */
-        private static void SetPortalColors(TeleportWorld portal, bool useDefaultColors)
-        {
-            var target_found_red = portal.transform.Find("_target_found_red");
-            if (!target_found_red)
-                return;
-
-            Modify(portal);
-            var particle_system = target_found_red.transform.Find("Particle System");
-
-            var blue_flames = particle_system.transform.Find("blue flames").GetComponent<ParticleSystem>();
-            var black_suck = particle_system.transform.Find("Black_suck").GetComponent<ParticleSystem>();
-            var suck_particles = particle_system.transform.Find("suck particles").GetComponent<ParticleSystem>();
-
-            var point_light = target_found_red.transform.Find("Point light").GetComponent<Light>();
-
-
-            if (portal.gameObject.name == "portal_stone(Clone)")
-            {
-                portal.m_colorTargetfound = customPortalGlyphColor.Value * 12f;
-            }
-            else
-            {
-                portal.m_colorTargetfound = customPortalGlyphColor.Value * 4f;
-            }
-
-
-            blue_flames.startColor = customPortalEffectColor.Value;
-            blue_flames.customData.SetColor(ParticleSystemCustomData.Custom1, customPortalEffectColor.Value);
-            blue_flames.customData.SetColor(ParticleSystemCustomData.Custom2, customPortalEffectColor.Value);
-            Color customColorWithAlpha = customPortalEffectColor.Value;
-            customColorWithAlpha = customColorWithAlpha * 0.1f;
-            customColorWithAlpha.a = 0.1f;
-            black_suck.startColor = customColorWithAlpha;
-            suck_particles.startColor = customPortalEffectColor.Value;
-
-            point_light.color = customPortalEffectColor.Value;
-        }
-
         // Patch Player.Load to apply saved status effects on load, AFTER load has finished.
         [HarmonyPatch(typeof(Player), "Load")]
         private static class PatchPlayerLoad
         {
             private static void Postfix(Player __instance)
             {
-                if (preserveStatusEffects.Value && StatusEffects.Count > 0)
+                if (CSPConfig.preserveStatusEffects.Value && StatusEffects.Count > 0)
                 {
                     foreach (var se in StatusEffects)
                     {
@@ -370,63 +103,38 @@ namespace Lunarbin.Valheim.CrossServerPortals
         }
 
         // endregion preserveStatuseffects
-
-        ConfigEntry<T> config<T>(string group, string name, T value, ConfigDescription description,
-            bool synchronizedSetting = true)
-        {
-            ConfigEntry<T> configEntry = Config.Bind(group, name, value, description);
-
-            SyncedConfigEntry<T> syncedConfigEntry = configSync.AddConfigEntry(configEntry);
-            syncedConfigEntry.SynchronizedConfig = synchronizedSetting;
-
-            return configEntry;
-        }
-
-        ConfigEntry<T> config<T>(string group, string name, T value, string description,
-            bool synchronizedSetting = true) =>
-            config(group, name, value, new ConfigDescription(description), synchronizedSetting);
-
-
+        
         private readonly Harmony harmony = new Harmony("lunarbin.games.valheim");
 
 
         private void Awake()
         {
             harmony.PatchAll();
+            CSPConfig.Init(Config);
+            Config.SettingChanged += OnConfigChanged;
+            StartCoroutine(RunOncePerMinute());
+        }
 
+        private static void OnConfigChanged(object sender, SettingChangedEventArgs e)
+        {
+            if (e.ChangedSetting.Definition.Key == CSPConfig.recolorPortalEffects.Definition.Key
+                || e.ChangedSetting.Definition.Key == CSPConfig.recolorPortalGlyphs.Definition.Key
+                || e.ChangedSetting.Definition.Key == CSPConfig.customPortalGlyphColor.Definition.Key
+                || e.ChangedSetting.Definition.Key == CSPConfig.customPortalEffectColor.Definition.Key)
+            {
+                ModifyPortalColors.OnColorSettingsChanged();
+            }
+            
+        }
 
-            // Config for preserving status effects while switching servers.
-            preserveStatusEffects = Config.Bind("General",
-                "PreserveStatusEffects",
-                true,
-                "Preserve Status Effects while switching servers (such as rested, wet, etc.)");
-
-            recolorPortalGlyphs = Config.Bind("General",
-                "RecolorPortalGlyphs",
-                true,
-                "Set to true to change the color of the glyphs for cross-server portals.");
-            customPortalGlyphColor = Config.Bind<Color>("General",
-                "CustomPortalGlyphColor",
-                new Color(0f, 1f, 0f, 1f),
-                "Custom color for portal glyphs. (defaults to Green) *Note: Stone portal glyph colors behave strangely and favor red.");
-
-            recolorPortalEffects = Config.Bind("General",
-                "RecolorPortalEffects",
-                true,
-                "Set to true to change the portal effects colors for cross-server portals.");
-
-            customPortalEffectColor = Config.Bind<Color>("General",
-                "CustomPortalEffectColor",
-                new Color(0f, 1f, 0f, 0.5f),
-                "Custom color for portal effects. (defaults to Green)");
-
-
-            requireAdminToRename = config<bool>("General",
-                "RequireAdminToRename",
-                false,
-                "Require admin permissions to rename cross server portals.");
-
-            configSync.AddLockingConfigEntry(requireAdminToRename);
+        private static IEnumerator RunOncePerMinute()
+        {
+            while (true)
+            {
+                yield return new WaitForSecondsRealtime(60);
+                
+                ModifyPortalColors.GarbageCollect();
+            }
         }
 
         // Patch TeleportWorld.Teleport.
@@ -506,11 +214,11 @@ namespace Lunarbin.Valheim.CrossServerPortals
                 string text = __instance.GetText();
                 if (!PortalTagIsToServer(text))
                 {
-                    ResetPortalColors(__instance);
+                    ModifyPortalColors.ResetPortalColors(__instance);
                     return true;
                 }
 
-                SetPortalColors(__instance, false);
+                ModifyPortalColors.SetPortalColors(__instance);
 
                 __result = true;
                 return false;
@@ -527,11 +235,11 @@ namespace Lunarbin.Valheim.CrossServerPortals
                 string text = __instance.GetText();
                 if (!PortalTagIsToServer(text))
                 {
-                    ResetPortalColors(__instance);
+                    ModifyPortalColors.ResetPortalColors(__instance);
                     return true;
                 }
 
-                SetPortalColors(__instance, false);
+                ModifyPortalColors.SetPortalColors(__instance);
 
                 __result = true;
                 return false;
@@ -563,9 +271,9 @@ namespace Lunarbin.Valheim.CrossServerPortals
                 string portalName = __instance.GetText();
                 if (portalName.Contains("|"))
                 {
-                    if (requireAdminToRename.Value)
+                    if (CSPConfig.requireAdminToRename.Value)
                     {
-                        if (ZNet.instance.LocalPlayerIsAdminOrHost())
+                        if (ZNet.instance.GetAdminList().Contains(UserInfo.GetLocalUser().UserId.m_userID))
                         {
                             // nothing
                         }
