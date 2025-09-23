@@ -13,7 +13,7 @@
             https://nuget.samboy.dev/v3/index.json
         </RestoreAdditionalProjectSources>
         <RootNamespace>Lunarbin.Valheim.CrossServerPortals</RootNamespace>
-        <GamePath><!-- Update Locally --></GamePath>
+        <GamePath>E:\SteamLibrary\steamapps\common\Valheim</GamePath>
         <OutDir>Release\</OutDir>
         <Configurations>Debug;Release</Configurations>
         <Platforms>AnyCPU</Platforms>
@@ -64,7 +64,7 @@
               Condition="Exists('$(OutputPath)$(AssemblyName).pdb')"/>
     </Target>
 
-    <Target Name="PackageForRelease" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' and Exists('$(OutputPath)$(AssemblyName).dll')">
+    <Target Name="PackageForRelease" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' and Exists('$(OutputPath)$(AssemblyName).dll') and !Exists('Packaged\$(AssemblyName)-v$(Version).zip')">
         <PropertyGroup>
             <DestDir>Packaged\$(AssemblyName)-$(Version)</DestDir>
         </PropertyGroup>
