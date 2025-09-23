@@ -1,20 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
-    <AssemblyName>ValheimCrossServerPortals</AssemblyName>
-    <Description>Cross Server Portals Valheim Mod</Description>
-    <Version>1.1.1</Version>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <LangVersion>latest</LangVersion>
-    <RestoreAdditionalProjectSources>
-      https://api.nuget.org/v3/index.json;
-      https://nuget.bepinex.dev/v3/index.json;
-      https://nuget.samboy.dev/v3/index.json
-    </RestoreAdditionalProjectSources>
-    <RootNamespace>Lunarbin.Valheim.CrossServerPortals</RootNamespace>
-    <OutputPath>$(GamePath)\BepInEx\plugins\CrossServerPortals</OutputPath>
-  </PropertyGroup>
     <PropertyGroup>
         <TargetFramework>net48</TargetFramework>
         <AssemblyName>ValheimCrossServerPortals</AssemblyName>
@@ -28,6 +13,7 @@
             https://nuget.samboy.dev/v3/index.json
         </RestoreAdditionalProjectSources>
         <RootNamespace>Lunarbin.Valheim.CrossServerPortals</RootNamespace>
+        <GamePath><!-- Update Locally --></GamePath>
         <OutDir>Release\</OutDir>
         <Configurations>Debug;Release</Configurations>
         <Platforms>AnyCPU</Platforms>
