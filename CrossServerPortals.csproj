@@ -13,7 +13,7 @@
             https://nuget.samboy.dev/v3/index.json
         </RestoreAdditionalProjectSources>
         <RootNamespace>Lunarbin.Valheim.CrossServerPortals</RootNamespace>
-        <GamePath>E:\SteamLibrary\steamapps\common\Valheim</GamePath>
+        <GamePath><!-- Update Locally --></GamePath>
         <OutDir>Release\</OutDir>
         <Configurations>Debug;Release</Configurations>
         <Platforms>AnyCPU</Platforms>
