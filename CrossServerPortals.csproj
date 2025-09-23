@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <AssemblyName>ValheimCrossServerPortals</AssemblyName>
     <Description>Cross Server Portals Valheim Mod</Description>
-    <Version>1.0.1</Version>
+    <Version>1.1.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <RestoreAdditionalProjectSources>
@@ -14,6 +14,7 @@
     </RestoreAdditionalProjectSources>
     <RootNamespace>Lunarbin.Valheim.CrossServerPortals</RootNamespace>
     <GamePath><!-- Update Locally --></GamePath>
+    <OutputPath>$(GamePath)\BepInEx\plugins\CrossServerPortals</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -52,5 +53,8 @@
     <Reference Include="UnityEngine.ParticleSystemModule">
       <HintPath>$(GamePath)\valheim_Data\Managed\UnityEngine.ParticleSystemModule.dll</HintPath>
     </Reference>
+      <Reference Include="Splatform">
+          <HintPath>$(GamePath)\valheim_Data\Managed\Splatform.dll</HintPath>
+      </Reference>
   </ItemGroup>
 </Project>
