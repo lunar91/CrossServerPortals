@@ -4,7 +4,7 @@
         <TargetFramework>net48</TargetFramework>
         <AssemblyName>ValheimCrossServerPortals</AssemblyName>
         <Description>Cross Server Portals Valheim Mod</Description>
-        <Version>1.1.1</Version>
+        <Version>1.1.2</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
         <RestoreAdditionalProjectSources>
@@ -47,7 +47,7 @@
         </ItemGroup>
     </Target>
 
-    <Target Name="CopyReleaseToGame" AfterTargets="Build" Condition="Exists('$(OutputPath)$(AssemblyName).dll')">
+    <Target Name="CopyReleaseToGame" AfterTargets="ILRepack" Condition="Exists('$(OutputPath)$(AssemblyName).dll')">
         <!-- destination (uses GamePath property from your project) -->
         <PropertyGroup>
             <DestDir>$(GamePath)\BepInEx\plugins\CrossServerPortals\</DestDir>
@@ -55,13 +55,13 @@
 
         <!-- create destination directory -->
         <MakeDir Directories="$(DestDir)" Condition="!Exists('$(DestDir)')"/>
-
+        <Message Importance="high" Text="Copying from $(TargetDir) to $(DestDir)" />
         <!-- copy compiled DLL and PDB (if present) -->
-        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+        <Copy SourceFiles="$(TargetDir)\$(AssemblyName).dll"
               DestinationFiles="$(DestDir)$(AssemblyName).dll"/>
-        <Copy SourceFiles="$(OutputPath)$(AssemblyName).pdb"
+        <Copy SourceFiles="$(TargetDir)\$(AssemblyName).pdb"
               DestinationFiles="$(DestDir)$(AssemblyName).pdb"
-              Condition="Exists('$(OutputPath)$(AssemblyName).pdb')"/>
+              Condition="Exists('$(TargetDir)\$(AssemblyName).pdb')"/>
     </Target>
 
     <Target Name="PackageForRelease" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' and Exists('$(OutputPath)$(AssemblyName).dll') and !Exists('Packaged\$(AssemblyName)-v$(Version).zip')">
