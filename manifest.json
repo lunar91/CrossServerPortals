@@ -1,6 +1,6 @@
 {
     "name": "Cross_Server_Portals",
-    "version_number": "1.1.1",
+    "version_number": "1.1.2",
     "website_url": "https://github.com/lunar91/CrossServerPortals",
     "description": "Link your servers together with portals. Update portal tags and teleport directly between servers.",
     "dependencies": []
