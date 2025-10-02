@@ -338,6 +338,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
 
                         FejdStartup.instance.SetServerToJoin(joinData);
                         FejdStartup.instance.JoinServer();
+                        HasJoinedServer = true; // Set that we have joined a server so we dont get stuck in reconnect loop.
                     }
                     //ZSteamMatchmaking.instance.QueueServerJoin($"{ServerToJoin?.Address}:{ServerToJoin?.Port}");
                 }
