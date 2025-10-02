@@ -273,7 +273,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
                 {
                     if (CSPConfig.requireAdminToRename.Value)
                     {
-                        if (ZNet.instance.GetAdminList().Contains(UserInfo.GetLocalUser().UserId.m_userID))
+                        if (Admin.IsAdmin)
                         {
                             // nothing
                         }
