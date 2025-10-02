@@ -44,6 +44,7 @@ or
 - [ServerSync](https://github.com/blaxxun-boop/ServerSync) - Library used to provide Server-Authoritative settings.
 
 ## Changelog
+ - **1.1.3** - Fixed Packaging regression in 1.1.2
  - **1.1.2** - Rewrote Admin Permission Checks. Fixed reconnect loop on failure to connect.
  - **1.1.1** - Fixed a version mishap.
  - **1.1.0** - Fixed Admin Permission Synchronization. Fixed visual bug introduced in Valheim v0.221.4.
