@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using UnityEngine;
 using ServerSync;
 using UnityEngine.SceneManagement;
@@ -148,8 +149,25 @@ namespace Lunarbin.Valheim.CrossServerPortals
 
                 if (PortalTagIsToServer(portalTag))
                 {
-                    player.Message(MessageHud.MessageType.Center, $"Teleporting to {portalTag}");
-                    TeleportToServer(portalTag, __instance);
+                    if (CSPConfig.promptBeforeTeleport.Value)
+                    {
+                        UnifiedPopup.Push(new YesNoPopup("Cross Server Teleport", $"Do you want to teleport to {portalTag}?",
+                            delegate
+                            {
+                                TeleportToServer(portalTag, __instance);
+                                UnifiedPopup.Pop();
+                            }, delegate
+                            {
+                                Player.m_localPlayer.Message(MessageHud.MessageType.Center, $"Cancelled Cross Server Teleport");
+                                UnifiedPopup.Pop();
+                            }));
+                    }
+                    else
+                    {
+                        
+                        TeleportToServer(portalTag, __instance);
+                    }
+                    
                     return false;
                 }
 
@@ -159,7 +177,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
 
         // TeleportToServer simply logs the player out.
         // The connection will be handled on the main menu.
-        public static void TeleportToServer(string tag, TeleportWorld instance)
+        public static async void TeleportToServer(string tag, TeleportWorld instance)
         {
             ServerToJoin = PortalTagToServerInfo(tag);
             if (ServerToJoin != null)
@@ -187,6 +205,56 @@ namespace Lunarbin.Valheim.CrossServerPortals
             }
 
             Player.m_localPlayer.Message(MessageHud.MessageType.Center, $"Invalid portal tag: {tag}");
+        }
+
+        private static void Logout()
+        {
+            Game.instance.Logout();
+        }
+
+        [HarmonyPatch(typeof(Player), "ShowTeleportAnimation")]
+        internal static class PatchShowTeleportAnimation
+        {
+            private static bool Prefix(Player __instance, ref bool __result)
+            {
+                if (TeleportingToServer)
+                {
+                    __result = true;
+                    return false;
+                }
+
+                return true;
+            }
+        }
+        
+        [HarmonyPatch(typeof(Player), "IsTeleporting")]
+        internal static class PatchIsTeleporting
+        {
+            private static bool Prefix(Player __instance, ref bool __result)
+            {
+                if (TeleportingToServer)
+                {
+                    __result = true;
+                    return false;
+                }
+
+                return true;
+            }
+        }
+        
+        [HarmonyPatch(typeof(Player), "CanMove")]
+        internal static class PatchPlayerCanMove
+        {
+            private static bool Prefix(Player __instance, ref bool __result)
+            {
+                if (TeleportingToServer)
+                {
+                    __result = false;
+                    return false;
+                }
+
+                return true;
+            }
         }
 
         // Move the player to the portal exit position.
@@ -373,6 +441,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
                 if (TeleportingToServer && ServerToJoin != null && ServerToJoin?.TargetTag != "")
                 {
                     List<ZDO> zdos = ZDOMan.instance.GetPortals();
+                    Vector3 targetPos = new();
                     foreach (var portal in zdos)
                     {
                         if (portal == null) continue;
@@ -383,18 +452,34 @@ namespace Lunarbin.Valheim.CrossServerPortals
                             || PortalTagToServerInfo(tag)?.SourceTag == ServerToJoin?.TargetTag)
                         {
                             var position = portal.GetPosition();
+                            targetPos = position;
                             var rotation = portal.GetRotation();
                             var offsetDir = rotation * Vector3.forward;
                             spawnPoint = position + offsetDir * PortalExitDistance + Vector3.up;
                             break;
                         }
                     }
+                    FinishCrossServerTeleport(2, targetPos);
+                    return;
                 }
-
                 // Null the ServerToJoin since we only just connected.
+                
                 TeleportingToServer = false;
                 ServerToJoin = null;
             }
+        }
+
+        public static async void FinishCrossServerTeleport(float seconds, Vector3 position = new Vector3())
+        {
+            await Task.Delay((int)(seconds * 1000));
+            
+            if (position.x != 0 && position.y != 0 && position.z != 0)
+            {
+                Player.m_localPlayer.transform.position = position;
+            }
+
+            TeleportingToServer = false;
+            ServerToJoin = null;
         }
 
         // Patch Game.Start to track portals when the game starts.
