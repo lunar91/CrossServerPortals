@@ -193,13 +193,16 @@ namespace Lunarbin.Valheim.CrossServerPortals
                 }
                 // }
 
-                MovePlayerToPortalExit(ref Player.m_localPlayer, ref instance);
+                
 
                 Game.instance.IncrementPlayerStat(PlayerStatType.PortalsUsed);
 
                 TeleportingToServer = true;
                 HasJoinedServer = false;
-
+                Player.m_localPlayer.Message(MessageHud.MessageType.Center, $"Teleporting to {tag}");
+                
+                await Task.Delay(1000);
+                MovePlayerToPortalExit(ref Player.m_localPlayer, ref instance);
                 Game.instance.Logout();
                 return;
             }

@@ -72,11 +72,11 @@ public static class Admin
             // If we aren't currently checking admin permission, do nothing.
             if (!Admin.IsChecking)
             {
-                //return true;
+                return true;
             }
             // Otherwise, verify the RPC print text
             Admin.Verify(text);
-            return true;
+            return false;
         }
     }
 
