@@ -11,10 +11,11 @@ public static class CSPConfig
     public static ConfigEntry<bool> recolorPortalEffects;
     public static ConfigEntry<Color> customPortalGlyphColor;
     public static ConfigEntry<Color> customPortalEffectColor;
+    public static ConfigEntry<bool> promptBeforeTeleport;
     public static ConfigEntry<bool> requireAdminToRename;
     public static ConfigFile Config;
     private static ConfigEntry<bool> lockAdminConfig;
-    
+
     // Synchronize Server Config
     private static ServerSync.ConfigSync configSync = new ServerSync.ConfigSync("lunarbin.games.valheim")
     {
@@ -26,7 +27,7 @@ public static class CSPConfig
     public static void Init(ConfigFile config)
     {
         Config = config;
-        
+
         // Config for preserving status effects while switching servers.
         preserveStatusEffects = config<bool>("General",
             "PreserveStatusEffects",
@@ -52,6 +53,10 @@ public static class CSPConfig
             new Color(0f, 1f, 0f, 0.5f),
             "Custom color for portal effects. (defaults to Green)");
 
+        promptBeforeTeleport = Config.Bind<bool>("General", 
+            "PromptBeforeTeleport", 
+            false,
+            "When true, you will be prompted to confirm cross-server teleports.");
 
         requireAdminToRename = config<bool>("General",
             "RequireAdminToRename",
@@ -59,10 +64,10 @@ public static class CSPConfig
             "Require admin permissions to rename cross server portals.");
 
         lockAdminConfig = config<bool>("Server", "LockAdminConfig", true, "Prevent this config from being changed.");
-        
+
         configSync.AddLockingConfigEntry(lockAdminConfig);
-    }   
-    
+    }
+
     static ConfigEntry<T> config<T>(string group, string name, T value, ConfigDescription description,
         bool synchronizedSetting = true)
     {
@@ -77,6 +82,4 @@ public static class CSPConfig
     static ConfigEntry<T> config<T>(string group, string name, T value, string description,
         bool synchronizedSetting = true) =>
         config(group, name, value, new ConfigDescription(description), synchronizedSetting);
-
-
 }

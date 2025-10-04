@@ -32,11 +32,11 @@ or
  - **RecolorPortalGlyphs** - Toggles whether portal glyphs are recolored
  - **CustomPortalGlyphColor** - The RGBA hex color code to use for portal glyphs
  - **RecolorPortalEffects** - Toggles whether portal effects are recolored
- - **CustomPortalEffectColor** - The RGBA hex color code to use for portal effects. 
+ - **CustomPortalEffectColor** - The RGBA hex color code to use for portal effects.
+ - **PromptBeforeTeleport** - When true, the user will be prompted before any cross-server teleport.
  - **RequireAdminToRename** - Require Admin access to rename a Cross Server Portal. *Note that this will require admin to rename any portal with "|" in the tag* This configuration is synchronized with the server via ServerSync.
 
 ## Planned Features
- - Prompt users before switching servers.
  - Validate Address:Port before making portal active.
 
 ## Credits
@@ -44,6 +44,7 @@ or
 - [ServerSync](https://github.com/blaxxun-boop/ServerSync) - Library used to provide Server-Authoritative settings.
 
 ## Changelog
+ - **1.2.0** - Added optional prompt before teleporting between servers (disabled by default). Added teleporting HUD animation when doing cross-server teleports. Added pop-up notification when trying to switch to a world that does not exist.
  - **1.1.3** - Fixed Packaging regression in 1.1.2
  - **1.1.2** - Rewrote Admin Permission Checks. Fixed reconnect loop on failure to connect.
  - **1.1.1** - Fixed a version mishap.

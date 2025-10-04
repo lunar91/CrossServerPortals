@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using BepInEx.Configuration;
 using UnityEngine;
+using HarmonyLib;
 
 namespace Lunarbin.Valheim.CrossServerPortals;
 
@@ -268,4 +269,51 @@ public static class ModifyPortalColors
 
         return defaultPortal;
     }
+    
+    /// <summary>
+    /// Patch TeleportWorld.HaveTarget.
+    /// If the portalTag counts as ServerInfo then treat it as active
+    /// </summary>
+    [HarmonyPatch(typeof(TeleportWorld), "HaveTarget")]
+    internal class PatchTeleportWorldHaveTarget
+    {
+        private static bool Prefix(ref bool __result, TeleportWorld __instance)
+        {
+            string portalTag = __instance.GetText();
+            if (!Lunarbin.Valheim.CrossServerPortals.TeleportInfo.PortalTagIsTeleportInfo(portalTag))
+            {
+                ModifyPortalColors.ResetPortalColors(__instance);
+                return true;
+            }
+
+            ModifyPortalColors.SetPortalColors(__instance);
+
+            __result = true;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Patch TeleportWorld.TargetFound.
+    /// If the portalTag counts as ServerInfo then treat it as active
+    /// </summary>
+    [HarmonyPatch(typeof(TeleportWorld), "TargetFound")]
+    internal class PatchTeleportWorldTargetFound
+    {
+        private static bool Prefix(ref bool __result, TeleportWorld __instance)
+        {
+            string portalTag = __instance.GetText();
+            if (!TeleportInfo.PortalTagIsTeleportInfo(portalTag))
+            {
+                ResetPortalColors(__instance);
+                return true;
+            }
+
+            SetPortalColors(__instance);
+
+            __result = true;
+            return false;
+        }
+    }
+    
 }
