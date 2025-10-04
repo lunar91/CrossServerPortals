@@ -5,112 +5,29 @@ using HarmonyLib;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine;
-using ServerSync;
-using UnityEngine.SceneManagement;
-using Splatform;
 
 namespace Lunarbin.Valheim.CrossServerPortals
 {
     [BepInPlugin("lunarbin.games.valheim", "Valheim Cross Server Portals", BuildInfo.Version)]
     public class CrossServerPortals : BaseUnityPlugin
     {
-        // Regex sourceTag|server:port|targetTag
-        // port and targetTag are optional
-        private static string PortalTagRegex =
-            @"^(?<SourceTag>[A-z0-9]+)\|(?<Server>(world:)?[A-z0-9\.]+):?(?<Port>[0-9]+)?\|?(?<TargetTag>[A-z0-9]+)?$";
+        private static TeleportInfo? teleportInfo;
+        private static bool teleportingToServer;
+        private static bool hasJoinedServer;
+        private static float portalExitDistance;
 
-        public static ServerInfo? ServerToJoin = null;
-        public static bool TeleportingToServer = false;
-        public static bool HasJoinedServer = false;
-        public static float PortalExitDistance = 0.0f;
+        private static List<ZDO> knownPortals = new();
 
-        private static List<SEData> StatusEffects = new List<SEData>();
-
-        public static List<ZDO> knownPortals = new();
-
-        public static readonly ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("CrossServerPortals");
-
-        public struct ServerInfo
-        {
-            public string Address;
-            public ushort Port;
-            public string SourceTag;
-            public string TargetTag;
-
-            public ServerInfo()
-            {
-            }
-
-            public ServerInfo(string sourceTag, string address, ushort port = 0, string targetTag = "")
-            {
-                Address = address;
-                Port = port;
-                SourceTag = sourceTag;
-                TargetTag = targetTag;
-            }
-
-            public ServerInfo(string sourceTag, string address, string targetTag = "")
-            {
-                Address = address;
-                Port = 0;
-                TargetTag = targetTag;
-                SourceTag = sourceTag;
-            }
-        }
-
-
-        // region preserveStatusEffects
-
-        private readonly struct SEData // Status Effect Data
-        {
-            public int Name { get; }
-            public float Ttl { get; }
-            public float Time { get; }
-
-            public SEData(int name, float ttl, float time)
-            {
-                Name = name;
-                Ttl = ttl;
-                Time = time;
-            }
-        }
-
-        // Patch Player.Load to apply saved status effects on load, AFTER load has finished.
-        [HarmonyPatch(typeof(Player), "Load")]
-        private static class PatchPlayerLoad
-        {
-            private static void Postfix(Player __instance)
-            {
-                if (CSPConfig.preserveStatusEffects.Value && StatusEffects.Count > 0)
-                {
-                    foreach (var se in StatusEffects)
-                    {
-                        __instance.GetSEMan().AddStatusEffect(se.Name);
-                        StatusEffect theSE = __instance.GetSEMan().GetStatusEffect(se.Name);
-                        if (theSE != null)
-                        {
-                            theSE.m_ttl = se.Time;
-                        }
-                    }
-                }
-
-                // Clear the saved Status Effects now that we have applied them.
-                StatusEffects.Clear();
-            }
-        }
-
-        // endregion preserveStatuseffects
+        public new static readonly ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("CrossServerPortals");
         
-        private readonly Harmony harmony = new Harmony("lunarbin.games.valheim");
+        private readonly Harmony _harmony = new Harmony("lunarbin.games.valheim");
 
 
         private void Awake()
         {
-            harmony.PatchAll();
+            _harmony.PatchAll();
             CSPConfig.Init(Config);
             Config.SettingChanged += OnConfigChanged;
             StartCoroutine(RunOncePerMinute());
@@ -136,6 +53,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
                 
                 ModifyPortalColors.GarbageCollect();
             }
+            // ReSharper disable once IteratorNeverReturns
         }
 
         // Patch TeleportWorld.Teleport.
@@ -147,7 +65,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
             {
                 string portalTag = __instance.GetText();
 
-                if (PortalTagIsToServer(portalTag))
+                if (TeleportInfo.PortalTagIsTeleportInfo(portalTag))
                 {
                     if (CSPConfig.promptBeforeTeleport.Value)
                     {
@@ -179,26 +97,15 @@ namespace Lunarbin.Valheim.CrossServerPortals
         // The connection will be handled on the main menu.
         public static async void TeleportToServer(string tag, TeleportWorld instance)
         {
-            ServerToJoin = PortalTagToServerInfo(tag);
-            if (ServerToJoin != null)
+            teleportInfo = TeleportInfo.ParsePortalTag(tag);
+            if (teleportInfo != null)
             {
-                // Preserve Status Effects across worlds
-                // if (preserveStatusEffects.Value)
-                // {
-                foreach (var se in Player.m_localPlayer.GetSEMan().GetStatusEffects())
-                {
-                    StatusEffects.Add(new SEData(se.NameHash(), se.m_ttl,
-                        // StatusEffect.m_time is protected, so instead I just set the ttl to the remaining time.
-                        se.m_ttl > 0 ? se.GetRemaningTime() : 0));
-                }
-                // }
-
-                
+                PreserveStatusEffects.SaveStatusEffects(Player.m_localPlayer);
 
                 Game.instance.IncrementPlayerStat(PlayerStatType.PortalsUsed);
 
-                TeleportingToServer = true;
-                HasJoinedServer = false;
+                teleportingToServer = true;
+                hasJoinedServer = false;
                 Player.m_localPlayer.Message(MessageHud.MessageType.Center, $"Teleporting to {tag}");
                 
                 await Task.Delay(1000);
@@ -220,7 +127,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
         {
             private static bool Prefix(Player __instance, ref bool __result)
             {
-                if (TeleportingToServer)
+                if (teleportingToServer)
                 {
                     __result = true;
                     return false;
@@ -235,7 +142,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
         {
             private static bool Prefix(Player __instance, ref bool __result)
             {
-                if (TeleportingToServer)
+                if (teleportingToServer)
                 {
                     __result = true;
                     return false;
@@ -250,7 +157,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
         {
             private static bool Prefix(Player __instance, ref bool __result)
             {
-                if (TeleportingToServer)
+                if (teleportingToServer)
                 {
                     __result = false;
                     return false;
@@ -272,51 +179,8 @@ namespace Lunarbin.Valheim.CrossServerPortals
             player.transform.position = newPos;
             player.transform.rotation = rotation;
             // Set the portal exit distance to double the normal
-            PortalExitDistance = portal.m_exitDistance * 2;
+            portalExitDistance = portal.m_exitDistance * 2;
         }
-
-        // Patch TeleportWorld.HaveTarget
-        // This makes it so the portal is usable and glows.
-        [HarmonyPatch(typeof(TeleportWorld), "HaveTarget")]
-        internal class PatchTeleportWorldHaveTarget
-        {
-            private static bool Prefix(ref bool __result, TeleportWorld __instance)
-            {
-                string text = __instance.GetText();
-                if (!PortalTagIsToServer(text))
-                {
-                    ModifyPortalColors.ResetPortalColors(__instance);
-                    return true;
-                }
-
-                ModifyPortalColors.SetPortalColors(__instance);
-
-                __result = true;
-                return false;
-            }
-        }
-
-        // Patch TeleportWorld.TargetFound
-        // This makes it so the portal is usable and glows.
-        [HarmonyPatch(typeof(TeleportWorld), "TargetFound")]
-        internal class PatchTeleportWorldTargetFound
-        {
-            private static bool Prefix(ref bool __result, TeleportWorld __instance)
-            {
-                string text = __instance.GetText();
-                if (!PortalTagIsToServer(text))
-                {
-                    ModifyPortalColors.ResetPortalColors(__instance);
-                    return true;
-                }
-
-                ModifyPortalColors.SetPortalColors(__instance);
-
-                __result = true;
-                return false;
-            }
-        }
-
 
         // Patch TeleportWorld.Interact
         // This is to increase character limit for portal tags.
@@ -373,14 +237,11 @@ namespace Lunarbin.Valheim.CrossServerPortals
         {
             private static void Postfix()
             {
-                MessageHud.print("Test");
-                if (ServerToJoin != null && TeleportingToServer && !HasJoinedServer)
+                if (teleportInfo != null && teleportingToServer && !hasJoinedServer)
                 {
-                    //Player.m_localPlayer.Message(MessageHud.MessageType.Center, $"Connecting to {ServerToJoin?.Address}:{ServerToJoin?.Port}");
-                    var Address = ServerToJoin?.Address;
-                    if (Address.StartsWith("world:"))
+                    if (teleportInfo?.Type == TeleportInfo.PortalType.World)
                     {
-                        var world = Address.Substring(6);
+                        var world = teleportInfo?.Address;
                         if (world != "")
                         {
                             List<World> worlds = SaveSystem.GetWorldList();
@@ -395,21 +256,23 @@ namespace Lunarbin.Valheim.CrossServerPortals
                                     return;
                                 }
                             }
-
-                            MessageHud.print($"World does not exist {world}");
-                            //Player.m_localPlayer.Message(MessageHud.MessageType.Center, $"World does not exist {world}");
+                            UnifiedPopup.Push(new WarningPopup("World Not Found", $"World {world} does not exist.",
+                                delegate
+                                {
+                                    UnifiedPopup.Pop();
+                                }));
                         }
                     }
                     else
                     {
                         //ServerJoinDataDedicated joinDataDedicated = new ServerJoinDataDedicated(ServerToJoin?.Address, (ushort)(ServerToJoin?.Port));
                         ServerJoinData joinData =
-                            new ServerJoinData(new ServerJoinDataDedicated(ServerToJoin?.Address,
-                                (ushort)(ServerToJoin?.Port)));
+                            new ServerJoinData(new ServerJoinDataDedicated(teleportInfo?.Address,
+                                (ushort)(teleportInfo?.Port)));
 
                         FejdStartup.instance.SetServerToJoin(joinData);
                         FejdStartup.instance.JoinServer();
-                        HasJoinedServer = true; // Set that we have joined a server so we dont get stuck in reconnect loop.
+                        hasJoinedServer = true; // Set that we have joined a server so we dont get stuck in reconnect loop.
                     }
                     //ZSteamMatchmaking.instance.QueueServerJoin($"{ServerToJoin?.Address}:{ServerToJoin?.Port}");
                 }
@@ -425,9 +288,9 @@ namespace Lunarbin.Valheim.CrossServerPortals
         {
             private static void Postfix()
             {
-                if (ServerToJoin != null && TeleportingToServer && !HasJoinedServer)
+                if (teleportInfo != null && teleportingToServer && !hasJoinedServer)
                 {
-                    HasJoinedServer = true;
+                    hasJoinedServer = true;
                     FejdStartup.instance.OnCharacterStart();
                 }
             }
@@ -441,7 +304,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
         {
             private static void Prefix(ref Vector3 spawnPoint)
             {
-                if (TeleportingToServer && ServerToJoin != null && ServerToJoin?.TargetTag != "")
+                if (teleportingToServer && teleportInfo != null && teleportInfo?.TargetTag != "")
                 {
                     List<ZDO> zdos = ZDOMan.instance.GetPortals();
                     Vector3 targetPos = new();
@@ -451,14 +314,14 @@ namespace Lunarbin.Valheim.CrossServerPortals
                         string tag = portal.GetString(ZDOVars.s_tag);
                         // If the tag is a direct match OR has a SourceTag that is
                         // then change the SpawnPoint to the portal exit location.
-                        if (tag == ServerToJoin?.TargetTag
-                            || PortalTagToServerInfo(tag)?.SourceTag == ServerToJoin?.TargetTag)
+                        if (tag == teleportInfo?.TargetTag
+                            || TeleportInfo.ParsePortalTag(tag)?.SourceTag == teleportInfo?.TargetTag)
                         {
                             var position = portal.GetPosition();
                             targetPos = position;
                             var rotation = portal.GetRotation();
                             var offsetDir = rotation * Vector3.forward;
-                            spawnPoint = position + offsetDir * PortalExitDistance + Vector3.up;
+                            spawnPoint = position + offsetDir * portalExitDistance + Vector3.up;
                             break;
                         }
                     }
@@ -467,8 +330,8 @@ namespace Lunarbin.Valheim.CrossServerPortals
                 }
                 // Null the ServerToJoin since we only just connected.
                 
-                TeleportingToServer = false;
-                ServerToJoin = null;
+                teleportingToServer = false;
+                teleportInfo = null;
             }
         }
 
@@ -481,8 +344,8 @@ namespace Lunarbin.Valheim.CrossServerPortals
                 Player.m_localPlayer.transform.position = position;
             }
 
-            TeleportingToServer = false;
-            ServerToJoin = null;
+            teleportingToServer = false;
+            teleportInfo = null;
         }
 
         // Patch Game.Start to track portals when the game starts.
@@ -532,29 +395,6 @@ namespace Lunarbin.Valheim.CrossServerPortals
                     }
                 }
             }
-        }
-
-        // Check if the tag matches the regex for a server.
-        public static bool PortalTagIsToServer(string tag)
-        {
-            return Regex.IsMatch(tag, PortalTagRegex);
-        }
-
-        // Convert a portal tag to a ServerInfo struct.
-        public static ServerInfo? PortalTagToServerInfo(string tag)
-        {
-            var match = Regex.Match(tag, PortalTagRegex);
-            if (match.Success)
-            {
-                return new ServerInfo(
-                    match.Groups["SourceTag"].Value,
-                    match.Groups["Server"].Value,
-                    ushort.Parse("0" + match.Groups["Port"].Value),
-                    match.Groups["TargetTag"].Value
-                );
-            }
-
-            return null;
         }
     }
 }
