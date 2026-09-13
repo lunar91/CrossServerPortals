@@ -4,7 +4,7 @@
         <TargetFramework>net48</TargetFramework>
         <AssemblyName>ValheimCrossServerPortals</AssemblyName>
         <Description>Cross Server Portals Valheim Mod</Description>
-        <Version>1.2.0</Version>
+        <Version>1.3.0</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
         <RestoreAdditionalProjectSources>
@@ -14,7 +14,7 @@
         </RestoreAdditionalProjectSources>
         <RootNamespace>Lunarbin.Valheim.CrossServerPortals</RootNamespace>
         <GamePath><!-- Update Locally --></GamePath>
-        <OutDir>Release\</OutDir>
+        <OutDir>Release</OutDir>
         <Configurations>Debug;Release</Configurations>
         <Platforms>AnyCPU</Platforms>
     </PropertyGroup>
@@ -47,7 +47,7 @@
         </ItemGroup>
     </Target>
 
-    <Target Name="CopyReleaseToGame" AfterTargets="ILRepack" Condition="Exists('$(OutputPath)$(AssemblyName).dll')">
+    <Target Name="CopyReleaseToGame" AfterTargets="ILRepack" Condition="Exists('$(OutDir)\$(AssemblyName).dll')">
         <!-- destination (uses GamePath property from your project) -->
         <PropertyGroup>
             <DestDir>$(GamePath)\BepInEx\plugins\CrossServerPortals\</DestDir>
@@ -64,7 +64,7 @@
               Condition="Exists('$(TargetDir)\$(AssemblyName).pdb')"/>
     </Target>
 
-    <Target Name="PackageForRelease" AfterTargets="ILRepack" Condition="'$(Configuration)' == 'Release' and Exists('$(OutputPath)$(AssemblyName).dll') and !Exists('Packaged\$(AssemblyName)-v$(Version).zip')">
+    <Target Name="PackageForRelease" AfterTargets="ILRepack" Condition="'$(Configuration)' == 'Release' and Exists('$(OutDir)\$(AssemblyName).dll') and !Exists('Packaged\$(AssemblyName)-v$(Version).zip')">
         <PropertyGroup>
             <DestDir>Packaged\$(AssemblyName)-$(Version)</DestDir>
         </PropertyGroup>
