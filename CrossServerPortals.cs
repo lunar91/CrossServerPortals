@@ -306,7 +306,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
             {
                 if (teleportingToServer && teleportInfo != null && teleportInfo?.TargetTag != "")
                 {
-                    List<ZDO> zdos = ZDOMan.instance.GetPortals();
+                    List<ZDO> zdos = ZDOMan.instance.GetPortalList();
                     Vector3 targetPos = new();
                     foreach (var portal in zdos)
                     {
@@ -363,7 +363,7 @@ namespace Lunarbin.Valheim.CrossServerPortals
             {
                 while (true)
                 {
-                    List<ZDO> portals = ZDOMan.instance.GetPortals();
+                    List<ZDO> portals = ZDOMan.instance.GetPortalList();
 
                     // Send the portals to the connected client.
                     if (ZNet.instance.IsServer())
